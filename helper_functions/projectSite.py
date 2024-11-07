@@ -17,8 +17,8 @@ class Site:
     
     def calculateVisitors(self):
         if self.visitorRate != 0:
-            self.visitors = self.area / self.visitorRate
+            self.visitors = self.area * self.visitorRate
         else:
             self.visitors = None
     def calculateCommercialRoutes(self):
-        self.commercial=self.area*self.commercialRate
+        self.commercial=self.area/100*self.commercialRate
