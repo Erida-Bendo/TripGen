@@ -17,8 +17,8 @@ class MainWindow(QMainWindow):
         self.central_widget = QWidget()
         scroll_area.setWidget(self.central_widget)
         scroll_area.setWidgetResizable(True)
-        scroll_area.setMinimumHeight(1000)
-        scroll_area.setMinimumWidth(1300)
+        scroll_area.setMinimumHeight(500)
+        scroll_area.setMinimumWidth(1000)
         self.setCentralWidget(scroll_area)
 
         self.layout = QHBoxLayout()

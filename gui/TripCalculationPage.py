@@ -1,9 +1,12 @@
+from PyQt5.QtWidgets import  QWidget, QCheckBox, QVBoxLayout, QLabel, QLineEdit, QComboBox, QPushButton, QGroupBox, QFrame, QGridLayout, QTableView, QMessageBox
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QAbstractScrollArea
 from helper_functions.projectSite  import Site
 from helper_functions.tripProp import tripProp
 from helper_functions.propCheck import propBounds
-
-from PyQt5.QtWidgets import  QWidget, QCheckBox, QVBoxLayout, QLabel, QLineEdit, QComboBox, QPushButton, QGroupBox, QFrame, QGridLayout
-from PyQt5.QtCore import Qt
+from helper_functions.hourlyGraphFunct import load_excel, table_view_to_dataframe, calculateDataForGraph
+from helper_functions.pandasModel import PandasModel
+from gui.GraphWindow import GraphWindow
 
 
 datasetPath="./resources/Trip Generation Old Tool.xlsm"
@@ -14,9 +17,12 @@ class TripCalculationPage(QWidget):
         super().__init__()
         self.instance_number = instance_number
         self.initUI()
+    
 
     def initUI(self):
         
+        
+
         layout = QVBoxLayout()  # Single vertical layout for all widgets
         self.setLayout(layout)
         
@@ -57,7 +63,12 @@ class TripCalculationPage(QWidget):
         self.trip_box = QGroupBox(f"Trip properties for Instance {self.instance_number}")
         self.trip_box.setObjectName("trip_box")
         self.trip_box.setStyleSheet("#trip_box {background-color: white; border: 3px solid rgb(196, 214, 0); font-size: 18px; font-weight: bold; border-radius: 6px; margin-top: 12px;} QGroupBox::title {subcontrol-origin: margin; left: 3px; padding: 0px 0px 5px 0px;}")
+        
         trip_layout=QVBoxLayout()
+
+        # Create layout with proper spacing and margins
+        trip_layout = QVBoxLayout()
+        
         self.trip_box.setLayout(trip_layout)
 
         self.freqEmployee = QLineEdit()
@@ -99,7 +110,7 @@ class TripCalculationPage(QWidget):
         Empfrac_widget.setLayout(Empfrac_layout)
 
         EmpFracBike_label = QLabel('Bike')
-        EmpFracBike_label.setFixedWidth(20)
+        EmpFracBike_label.setFixedWidth(30)
         self.bikeShareEmployee = QLineEdit()
         self.bikeShareEmployee.setFixedWidth(50)
 
@@ -107,7 +118,7 @@ class TripCalculationPage(QWidget):
         Empfrac_layout.addWidget(self.bikeShareEmployee, 0,3)
 
         EmpFracBus_label = QLabel('Bus')
-        EmpFracBus_label.setFixedWidth(20)
+        EmpFracBus_label.setFixedWidth(30)
         self.publicShareEmployee = QLineEdit()
         self.publicShareEmployee.setFixedWidth(50)
 
@@ -209,6 +220,7 @@ class TripCalculationPage(QWidget):
         self.commercial_value.setStyleSheet("background-color: rgb(196, 214, 0)")
         self.commercial_value.hide()
         trip_layout.addWidget(self.commercial_value)
+        self.trip_box.adjustSize()
 
         self.effects_box = QGroupBox(f"Effects for Instance {self.instance_number}")
         self.effects_box.setMinimumWidth(350)
@@ -291,8 +303,69 @@ class TripCalculationPage(QWidget):
         layout.addWidget(self.TotPublic)
         self.TotMotor= QLabel("Motor Trips:")
         layout.addWidget(self.TotMotor)
+        self.space= QLabel("")
+        layout.addWidget(self.space)
+        #######################################################################################################################################
+    
+        self.graph_box = QGroupBox(f"Graph Generation for Instance {self.instance_number}")
+        self.graph_box.setMinimumWidth(350)
+        self.graph_box.setObjectName("graph_box")
+        self.graph_box.setStyleSheet("#graph_box {background-color: white; border: 3px solid rgb(196, 214, 0); font-size: 18px; font-weight: bold; border-radius: 6px; margin-top: 12px;} QGroupBox::title {subcontrol-origin: margin; left: 3px; padding: 0px 0px 5px 0px;}")
+        graph_layout=QVBoxLayout()
+        self.graph_box.setLayout(graph_layout)
 
+        self.Ganglinien= QLabel("Hourly Graphs")
+        self.Ganglinien.setStyleSheet("font-weight: bold;")
+        graph_layout.addWidget(self.Ganglinien)
 
+        self.hourly_standarts = QComboBox()
+        self.hourly_standarts.addItems(["Wohnnutzung", "kleinflächige gewerbliche Nutzung", "großflächige gewerbliche Nutzung", "Freizeiteinrichtung allgemein", "Kur- und Heilbad ", "Spaß- und Erlebnisbad ", "Großkino", "Discounter (Eigenkreation)", "Tankstellen", "Tegel-Center"])
+        graph_layout.addWidget(QLabel("Choose Standard:"))
+        graph_layout.addWidget(self.hourly_standarts)
+
+        self.get_button = QPushButton("Get Data for Hourly Graph")
+        self.get_button.setStyleSheet("background-color: rgb(196, 214, 0); font-size: 15px; font-weight: bold;")
+        self.get_button.clicked.connect(self.get_data)
+        graph_layout.addWidget(self.get_button)
+
+        self.table_view = QTableView()
+        self.load_data()
+        self.table_view.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.table_view.resizeRowsToContents()
+        self.table_view.resizeColumnsToContents()
+        graph_layout.addWidget(self.table_view)
+
+        self.trip_type = QComboBox()
+        self.trip_type.addItems(["Visitor", "Employee", "Commercial"])
+        graph_layout.addWidget(QLabel("Choose Trip Type:"))
+        graph_layout.addWidget(self.trip_type)
+
+        self.means_type = QComboBox()
+        self.means_type.addItems(["Pedestrian","Bike","Public","Car"])
+        graph_layout.addWidget(QLabel("Choose Means:"))
+        graph_layout.addWidget(self.means_type)
+
+        self.graph_button = QPushButton("Create Hourly Graph")
+        self.graph_button.setStyleSheet("background-color: rgb(196, 214, 0); font-size: 15px; font-weight: bold;")
+        self.graph_button.clicked.connect(self.createGraph)
+        graph_layout.addWidget(self.graph_button)
+        
+        layout.addWidget(self.graph_box)
+
+    def load_data(self):
+        
+        # Call the imported function
+        self.df = load_excel("./resources/Trip Generation Old Tool.xlsm", self.hourly_standarts.currentIndex())
+        
+        # Create model and connect to view
+        model = PandasModel(self.df)
+        self.table_view.setModel(model)
+        for column in range(model.columnCount()):
+            self.table_view.setColumnWidth(column, 150)
+        self.table_view.verticalHeader().setFixedWidth(150)
+        
+        # Configure view to show row titles
+        self.table_view.verticalHeader().setVisible(True)
 
     def toggle_values(self, state):
         boundsToggle = propBounds()
@@ -338,6 +411,27 @@ class TripCalculationPage(QWidget):
             self.effect2_value.hide()
             self.effect3_value.hide()
 
+    def get_data(self):
+        self.load_data()
+        return
+
+    
+    def createGraph(self):
+        hourlyData=table_view_to_dataframe(self.table_view)
+
+        chosenProps=None
+        if(self.trip_type.currentIndex()==0):chosenProps=self.visitorProps
+        elif(self.trip_type.currentIndex()==1):chosenProps=self.employeeProps
+        else: chosenProps=self.projectSite.commercial
+        print(chosenProps)
+
+        graphData= calculateDataForGraph(hourlyData, chosenProps, self.trip_type.currentIndex(), self.means_type.currentIndex())
+        print(graphData)
+        self.graph_window = GraphWindow(graphData)
+        self.graph_window.show()
+        return
+    
+    
     def calculate(self):
         areaInp = float(self.area.text())
         employeeRateInp = float(self.employeeRate.text())
@@ -434,50 +528,52 @@ class TripCalculationPage(QWidget):
             else:
                 self.effect3.setStyleSheet("")
 
-        projectSite = Site(areaInp, employeeRateInp, visitorRateInp, commercialInp)
-        projectSite.calculateEmployee()
-        projectSite.calculateVisitors()
-        projectSite.calculateCommercialRoutes()
+        self.projectSite = Site(areaInp, employeeRateInp, visitorRateInp, commercialInp)
+        self.projectSite.calculateEmployee()
+        self.projectSite.calculateVisitors()
+        self.projectSite.calculateCommercialRoutes()
 
-        employeeProps = tripProp(freqEmployeeInp, motorEmployeeInp, vehiclesEmployeeInp, pedShareEmployeeInp, bikeShareEmployeeInp, publicShareEmployeeInp)
-        visitorProps = tripProp(freqVisitorInp, motorVisitorInp, vehiclesVisitorInp,pedShareVisitorInp, bikeShareVisitorInp, publicShareVisitorInp )
-        employeeProps.calculateRoutes(projectSite.employees, False)
-        visitorProps.calculateRoutes(projectSite.visitors, True)
+        self.employeeProps = tripProp(freqEmployeeInp, motorEmployeeInp, vehiclesEmployeeInp, pedShareEmployeeInp, bikeShareEmployeeInp, publicShareEmployeeInp)
+        self.visitorProps = tripProp(freqVisitorInp, motorVisitorInp, vehiclesVisitorInp,pedShareVisitorInp, bikeShareVisitorInp, publicShareVisitorInp )
+        self.employeeProps.calculateRoutes(self.projectSite.employees, False)
+        self.visitorProps.calculateRoutes(self.projectSite.visitors, True)
     
 
-        self.EmpPed.setText(f"Pedestrian Trips: {employeeProps.pedestrianTrips}")
-        self.EmpBike.setText(f"Bike Trips: {employeeProps.bikeTrips}")
-        self.EmpPublic.setText(f"Public Transport Trips: {employeeProps.publicTrips}")
-        self.EmpMotor.setText(f"Car Trips: {employeeProps.motorTrips}")
+        self.EmpPed.setText(f"Pedestrian Trips: {self.employeeProps.pedestrianTrips}")
+        self.EmpBike.setText(f"Bike Trips: {self.employeeProps.bikeTrips}")
+        self.EmpPublic.setText(f"Public Transport Trips: {self.employeeProps.publicTrips}")
+        self.EmpMotor.setText(f"Car Trips: {self.employeeProps.motorTrips}")
 
-        self.VisPed.setText(f"Pedestrian Trips: {visitorProps.pedestrianTrips}")
-        self.VisBike.setText(f"Bike Trips: {visitorProps.bikeTrips}")
-        self.VisPublic.setText(f"Public Transport Trips: {visitorProps.publicTrips}")
-        self.VisMotor.setText(f"Car Trips: {visitorProps.motorTrips}")
+        self.VisPed.setText(f"Pedestrian Trips: {self.visitorProps.pedestrianTrips}")
+        self.VisBike.setText(f"Bike Trips: {self.visitorProps.bikeTrips}")
+        self.VisPublic.setText(f"Public Transport Trips: {self.visitorProps.publicTrips}")
+        self.VisMotor.setText(f"Car Trips: {self.visitorProps.motorTrips}")
 
-        self.Comm.setText(f"Commercial Car Trips: {projectSite.commercial}")
+        self.Comm.setText(f"Commercial Car Trips: {self.projectSite.commercial}")
 
-        self.TotPed.setText(f"Pedestrian Trips: {employeeProps.pedestrianTrips+visitorProps.pedestrianTrips}")
-        self.TotBike.setText(f"Bike Trips: {employeeProps.bikeTrips+visitorProps.bikeTrips}")
-        self.TotPublic.setText(f"Public Transport Trips: {employeeProps.publicTrips+visitorProps.publicTrips}")
-        self.TotMotor.setText(f"Car Trips: {employeeProps.motorTrips+visitorProps.motorTrips+projectSite.commercial}")
+        self.TotPed.setText(f"Pedestrian Trips: {self.employeeProps.pedestrianTrips+self.visitorProps.pedestrianTrips}")
+        self.TotBike.setText(f"Bike Trips: {self.employeeProps.bikeTrips+self.visitorProps.bikeTrips}")
+        self.TotPublic.setText(f"Public Transport Trips: {self.employeeProps.publicTrips+self.visitorProps.publicTrips}")
+        self.TotMotor.setText(f"Car Trips: {self.employeeProps.motorTrips+self.visitorProps.motorTrips+self.projectSite.commercial}")
+
+        
 
         return {
 
-            'EmpPed': employeeProps.pedestrianTrips,
-            'EmpBike': employeeProps.bikeTrips,
-            'EmpPublic': employeeProps.publicTrips,
-            'EmpMotor': employeeProps.motorTrips,
+            'EmpPed': self.employeeProps.pedestrianTrips,
+            'EmpBike': self.employeeProps.bikeTrips,
+            'EmpPublic': self.employeeProps.publicTrips,
+            'EmpMotor': self.employeeProps.motorTrips,
 
-            'VisPed': visitorProps.pedestrianTrips,
-            'VisBike': visitorProps.bikeTrips,
-            'VisPublic': visitorProps.publicTrips,
-            'VisMotor': visitorProps.motorTrips,
+            'VisPed': self.visitorProps.pedestrianTrips,
+            'VisBike': self.visitorProps.bikeTrips,
+            'VisPublic': self.visitorProps.publicTrips,
+            'VisMotor': self.visitorProps.motorTrips,
 
-            'TotPed': employeeProps.pedestrianTrips+visitorProps.pedestrianTrips,
-            'TotBike': employeeProps.bikeTrips+visitorProps.bikeTrips,
-            'TotPublic': employeeProps.publicTrips+visitorProps.publicTrips,
-            'TotMotor': employeeProps.motorTrips+visitorProps.motorTrips+projectSite.commercial,
-            'CommMotor': projectSite.commercial,
+            'TotPed': self.employeeProps.pedestrianTrips+self.visitorProps.pedestrianTrips,
+            'TotBike': self.employeeProps.bikeTrips+self.visitorProps.bikeTrips,
+            'TotPublic': self.employeeProps.publicTrips+self.visitorProps.publicTrips,
+            'TotMotor': self.employeeProps.motorTrips+self.visitorProps.motorTrips+self.projectSite.commercial,
+            'CommMotor': self.projectSite.commercial,
 
         }

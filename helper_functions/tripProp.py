@@ -1,4 +1,3 @@
-from helper_functions.projectSite import Site
 
 class tripProp:
     def __init__(self, frequency, motorizedShare, vehicleOccupancy,pedShare, bikeShare, publicShare, 
@@ -31,5 +30,8 @@ class tripProp:
         self.bikeTrips = persons*self.frequency*self.bikeShare
         self.publicTrips = persons*self.frequency*self.publicShare
         self.pedestrianTrips = persons*self.frequency*self.pedShare
+
+
+    
 
      

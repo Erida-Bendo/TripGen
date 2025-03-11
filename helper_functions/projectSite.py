@@ -22,3 +22,5 @@ class Site:
             self.visitors = None
     def calculateCommercialRoutes(self):
         self.commercial=self.area/100*self.commercialRate
+
+    
