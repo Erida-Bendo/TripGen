@@ -527,7 +527,7 @@ class TripCalculationPage(QWidget):
                 self.effect3.setStyleSheet("background-color: yellow;")
             else:
                 self.effect3.setStyleSheet("")
-
+        ################ Main calculations
         self.projectSite = Site(areaInp, employeeRateInp, visitorRateInp, commercialInp)
         self.projectSite.calculateEmployee()
         self.projectSite.calculateVisitors()
