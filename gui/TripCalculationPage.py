@@ -336,7 +336,7 @@ class TripCalculationPage(QWidget):
         graph_layout.addWidget(self.table_view)
 
         self.trip_type = QComboBox()
-        self.trip_type.addItems(["Visitor", "Employee", "Commercial"])
+        self.trip_type.addItems(["Visitor", "Employee", "Commercial", "All Types"])
         graph_layout.addWidget(QLabel("Choose Trip Type:"))
         graph_layout.addWidget(self.trip_type)
 
@@ -418,12 +418,12 @@ class TripCalculationPage(QWidget):
     
     def createGraph(self):
         hourlyData=table_view_to_dataframe(self.table_view)
-
+        hourlyData = hourlyData.drop(hourlyData.index[-1])
         chosenProps=None
         if(self.trip_type.currentIndex()==0):chosenProps=self.visitorProps
         elif(self.trip_type.currentIndex()==1):chosenProps=self.employeeProps
-        else: chosenProps=self.projectSite.commercial
-        print(chosenProps)
+        elif(self.trip_type.currentIndex()==2): chosenProps=self.projectSite.commercial
+        elif(self.trip_type.currentIndex()==3): chosenProps=[self.visitorProps, self.employeeProps, self.projectSite.commercial]
 
         graphData= calculateDataForGraph(hourlyData, chosenProps, self.trip_type.currentIndex(), self.means_type.currentIndex())
         print(graphData)

@@ -73,37 +73,73 @@ def table_view_to_dataframe(table_view):
 def calculateDataForGraph (hourlyData, chosenProps, tripType, meansIndex):
     totalTrips=None
     colSource=None
+    if (tripType==3):
+        employees=0
+        visitors=0
+        commercial=0
 
-    if(tripType==0):
-        colSource=0
-    elif(tripType==1):
-        colSource=2
+        numeric_vis = pd.to_numeric(hourlyData.iloc[:, 0], errors='coerce')
+        numeric_vis_plus = pd.to_numeric(hourlyData.iloc[:, 1], errors='coerce')
+        numeric_emp = pd.to_numeric(hourlyData.iloc[:, 2], errors='coerce')
+        numeric_emp_plus = pd.to_numeric(hourlyData.iloc[:, 3], errors='coerce')
+        numeric_comm = pd.to_numeric(hourlyData.iloc[:, 4], errors='coerce')
+        numeric_comm_plus = pd.to_numeric(hourlyData.iloc[:, 5], errors='coerce')
+        result_df = pd.DataFrame()
 
-    if isinstance(chosenProps, tripProp):
         if(meansIndex==0):
-            totalTrips=chosenProps.pedestrianTrips
+            visitors= chosenProps[0].pedestrianTrips
+            employees= chosenProps[1].pedestrianTrips
         elif(meansIndex==1):
-            totalTrips=chosenProps.bikeTrips
+            visitors= chosenProps[0].bikeTrips
+            employees= chosenProps[1].bikeTrips
         elif(meansIndex==2):
-            totalTrips=chosenProps.publicTrips
+            visitors= chosenProps[0].publicTrips
+            employees= chosenProps[1].publicTrips
         elif(meansIndex==3):
-            totalTrips=chosenProps.motorTrips
-    else:
-        totalTrips=chosenProps
-        colSource=4
+            visitors= chosenProps[0].motorTrips
+            employees= chosenProps[1].motorTrips
+            commercial= chosenProps[2]
 
-    numeric_col = pd.to_numeric(hourlyData.iloc[:, colSource], errors='coerce')
-    numeric_col_plus = pd.to_numeric(hourlyData.iloc[:, colSource+1], errors='coerce')
-    
-    # Create the result DataFrame
-    result_df = pd.DataFrame()
-    
-    # Ensure totalTrips is a number before division
-    if totalTrips is not None:
-        # Calculate using the converted numeric columns
-        result_df['Processed-'] = (numeric_col/100) * (totalTrips/2)
-        result_df['Processed+'] = (numeric_col_plus/100) * (totalTrips/2)
+        result_df['Vis-'] = (numeric_vis/100) * (visitors/2)
+        result_df['Vis+'] = (numeric_vis_plus/100) * (visitors/2)
+
+        result_df['Emp-'] = (numeric_emp/100) * (employees/2)
+        result_df['Emp+'] = (numeric_emp_plus/100) * (employees/2)
+
+        if(commercial is not None):
+            result_df['Com-'] = (numeric_comm/100) * (commercial/2)
+            result_df['Com+'] = (numeric_comm_plus/100) * (commercial/2)
     else:
-        print("Error: totalTrips is None")
+        if(tripType==0):
+            colSource=0
+        elif(tripType==1):
+            colSource=2
+
+        if isinstance(chosenProps, tripProp):
+            if(meansIndex==0):
+                totalTrips=chosenProps.pedestrianTrips
+            elif(meansIndex==1):
+                totalTrips=chosenProps.bikeTrips
+            elif(meansIndex==2):
+                totalTrips=chosenProps.publicTrips
+            elif(meansIndex==3):
+                totalTrips=chosenProps.motorTrips
+        else:
+            totalTrips=chosenProps
+            colSource=4
+
+        numeric_col = pd.to_numeric(hourlyData.iloc[:, colSource], errors='coerce')
+        numeric_col_plus = pd.to_numeric(hourlyData.iloc[:, colSource+1], errors='coerce')
+        
+        # Create the result DataFrame
+        result_df = pd.DataFrame()
+        
+        # Ensure totalTrips is a number before division
+        if totalTrips is not None:
+            # Calculate using the converted numeric columns
+            result_df['Processed-'] = (numeric_col/100) * (totalTrips/2)
+            result_df['Processed+'] = (numeric_col_plus/100) * (totalTrips/2)
+        else:
+            print("Error: totalTrips is None")
     
     return result_df
